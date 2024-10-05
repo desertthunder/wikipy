@@ -27,6 +27,10 @@ Data is persisted in a SQLite database (local) using `SQLModel`.
     - Movies (this is an actual use case for me)
     - Cities
 
+## Future Plans
+
+- Expand to other Wikimedia [projects](https://api.wikimedia.org/wiki/Wikimedia_projects)
+
 ## Resources
 
 - [Wikimedia API Documentation](https://api.wikimedia.org/wiki/Main_Page)

@@ -3,6 +3,7 @@
 Essentially a wrapper around the Wikipedia API.
 """
 
+import enum
 import logging
 import os
 import time
@@ -71,9 +72,8 @@ class Formatter(logging.Formatter):
         return logger
 
 
-logger = Formatter.build_logger()
-
 # Constants
+logger = Formatter.build_logger()
 client = httpx.Client()
 console = Console()
 
@@ -113,11 +113,49 @@ class ClientCredentials(typing.NamedTuple):
     client_secret: str
 
 
+class WikipediaSearchParams(BaseModel):
+    """Search endpoint params."""
+
+    search_terms: list[str] = []
+    # Can be anywhere from 1 to 100,
+    #   the default is 50
+    limit: int = 5
+
+    @property
+    def as_dict(self) -> dict:
+        """Return the search params as a dictionary."""
+        return {
+            "q": "+".join(self.search_terms),
+            "limit": self.limit,
+        }
+
+
+class WikipediaEndpoints(enum.StrEnum):
+    """Available endpoints for the Wikipedia API."""
+
+    SEARCH_PAGES = "search/page"
+    SEARCH_TITLES = "search/title"
+
+    # NOTE - Below are not yet implemented in the provider class
+    # {page} is `key` in the search response item
+    PAGE_WITH_HTML = "page/{page}/with_html"
+    PAGE_HTML = "page/{page}/html"
+    PAGE_FILES = "page/{page}/files"
+
+    # {file} is `title` in the page files response item
+    FILE = "file/{file}"
+
+
 class Wikipedia(Provider):
     """Wikipedia API wrapper/Provider class."""
 
     logger: logging.Logger = logger
     auth_url: str = "https://meta.wikimedia.org/w/rest.php/oauth2/access_token"
+
+    @property
+    def debug(self) -> bool:
+        """Check the environment for the debug flag."""
+        return os.getenv("DEBUG", False) in [True, "True"]
 
     def get_credentials(self) -> ClientCredentials:
         """Return the client credentials."""
@@ -148,3 +186,51 @@ class Wikipedia(Provider):
             data = resp.json()
 
             return AccessTokenResponse(**data)
+
+    def search_titles(self, terms: list[str], limit: int = 5) -> dict:
+        """Search for articles on Wikipedia."""
+        params = WikipediaSearchParams(search_terms=terms, limit=limit)
+
+        with httpx.Client(
+            base_url="https://api.wikimedia.org/core/v1/wikipedia/en/"
+        ) as client:
+            logger.debug("Searching Wikipedia")
+
+            resp = client.get(
+                WikipediaEndpoints.SEARCH_TITLES,
+                params=params.as_dict,
+            )
+
+            if resp.is_error:
+                logger.error(f"Error: {resp.status_code} - {resp.reason_phrase}")
+
+            data = resp.json()
+
+            if self.debug:
+                console.print_json(data=data)
+
+            return data
+
+    def search_pages(self, terms: list[str], limit: int = 2) -> dict:
+        """Search for articles on Wikipedia."""
+        params = WikipediaSearchParams(search_terms=terms, limit=limit)
+
+        with httpx.Client(
+            base_url="https://api.wikimedia.org/core/v1/wikipedia/en/"
+        ) as client:
+            logger.debug(f"Searching Wikipedia for: {",".join(terms)}")
+
+            resp = client.get(
+                WikipediaEndpoints.SEARCH_PAGES,
+                params=params.as_dict,
+            )
+
+            if resp.is_error:
+                logger.error(f"Error: {resp.status_code} - {resp.reason_phrase}")
+
+            data = resp.json()
+
+            if self.debug:
+                console.print_json(data=data)
+
+            return data
