@@ -151,6 +151,10 @@ class Wikipedia(Provider):
 
     logger: logging.Logger = logger
     auth_url: str = "https://meta.wikimedia.org/w/rest.php/oauth2/access_token"
+    api_url: str = "https://api.wikimedia.org/core/v1/wikipedia/en/"
+    random_url: str = "https://en.wikipedia.org/wiki/Special:Random"
+    token: str | None = None
+
 
     @property
     def debug(self) -> bool:
@@ -167,7 +171,7 @@ class Wikipedia(Provider):
 
         return ClientCredentials(client_id, client_secret)
 
-    def get_access_token(self) -> AccessTokenResponse:
+    def get_access_token(self) -> httpx.Response:
         """Authenticate client credentials."""
         with httpx.Client(base_url=self.auth_url) as client:
             logger.debug("Authenticating client credentials")
@@ -183,54 +187,83 @@ class Wikipedia(Provider):
             if resp.is_error:
                 logger.error(f"Error: {resp.status_code} - {resp.reason_phrase}")
 
-            data = resp.json()
+                return resp.raise_for_status()
 
-            return AccessTokenResponse(**data)
+            return resp
 
-    def search_titles(self, terms: list[str], limit: int = 5) -> dict:
+    def search_titles(self, terms: list[str], limit: int = 5) -> httpx.Response:
         """Search for articles on Wikipedia."""
         params = WikipediaSearchParams(search_terms=terms, limit=limit)
 
-        with httpx.Client(
-            base_url="https://api.wikimedia.org/core/v1/wikipedia/en/"
-        ) as client:
+        headers = {}
+        if not self.token:
+            logger.warning("No access token found.")
+        else:
+            headers = {"Authorization": f"Bearer {self.token}"}
+
+
+
+        with httpx.Client(base_url=self.api_url) as client:
             logger.debug("Searching Wikipedia")
 
             resp = client.get(
                 WikipediaEndpoints.SEARCH_TITLES,
                 params=params.as_dict,
+                headers=headers,
             )
 
             if resp.is_error:
                 logger.error(f"Error: {resp.status_code} - {resp.reason_phrase}")
 
-            data = resp.json()
+                return resp.raise_for_status()
 
             if self.debug:
-                console.print_json(data=data)
+                console.print_json(data=resp.json())
 
-            return data
+            return resp
 
-    def search_pages(self, terms: list[str], limit: int = 2) -> dict:
+    def search_articles(self, terms: list[str], limit: int = 2) -> httpx.Response:
         """Search for articles on Wikipedia."""
         params = WikipediaSearchParams(search_terms=terms, limit=limit)
 
-        with httpx.Client(
-            base_url="https://api.wikimedia.org/core/v1/wikipedia/en/"
-        ) as client:
+        headers = {}
+        if not self.token:
+            logger.warning("No access token found.")
+        else:
+            headers = {"Authorization": f"Bearer {self.token}"}
+
+
+        with httpx.Client(base_url=self.api_url) as client:
             logger.debug(f"Searching Wikipedia for: {",".join(terms)}")
 
             resp = client.get(
                 WikipediaEndpoints.SEARCH_PAGES,
                 params=params.as_dict,
+                headers=headers,
             )
 
             if resp.is_error:
                 logger.error(f"Error: {resp.status_code} - {resp.reason_phrase}")
 
-            data = resp.json()
+                return resp.raise_for_status()
 
             if self.debug:
-                console.print_json(data=data)
+                console.print_json(data=resp.json())
 
-            return data
+            return resp
+
+    def get_random_article(self) -> httpx.Response:
+        """Get a random page from Wikipedia."""
+        with httpx.Client(base_url=self.random_url) as client:
+            logger.debug("Getting a random page")
+
+            resp: httpx.Response = client.get(url="")
+
+            if resp.is_error:
+                logger.error(f"Error: {resp.status_code} - {resp.reason_phrase}")
+
+                return resp.raise_for_status()
+
+            logger.debug(f"Random page: {resp.headers.get("location")}")
+
+            return resp
