@@ -11,15 +11,28 @@ the stdout display.
 
 Data is persisted in a SQLite database (local) using `SQLModel`.
 
+## Usage
+
+```bash
+wikipy [OPTIONS] COMMAND [ARGS]...
+```
+
+### Commands
+
+```plaintext
+search      Search Wikipedia
+read        Read Wikipedia articles
+export      Export Wikipedia articles (HTML or Markdown)
+random      Get random Wikipedia articles
+summary     Get a summary of a Wikipedia article
+download    Download images from Wikipedia articles
+categories  Get the categories of a Wikipedia article
+links       Get the links in a Wikipedia article
+build       Build a graph or a dataset
+```
+
 ## Features
 
-- Search Wikipedia
-- Read Wikipedia articles (HTML to Markdown)
-- Get random Wikipedia articles
-- Get a summary of a Wikipedia article
-- Download images from Wikipedia articles
-- Get the categories of a Wikipedia article
-- Get the links in a Wikipedia article
 - Build a graph of Wikipedia articles
     - Uses `graphviz` for images or `mermaid` for markdown
     - See [this](https://towardsdatascience.com/graph-visualisation-basics-with-python-part-iii-directed-graphs-with-graphviz-50116fb0d670) article for more information on graph visualisation

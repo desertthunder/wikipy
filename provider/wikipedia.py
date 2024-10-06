@@ -14,78 +14,34 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from rich.console import Console
 
+from libs.logger import Formatter
+
 load_dotenv(dotenv_path=".env")
 
-
-class Formatter(logging.Formatter):
-    """Custom log formatter."""
-
-    grey = "\x1b[38;20m"
-    yellow = "\x1b[33;20m"
-    green = "\x1b[32;20m"
-    cyan = "\x1b[36;20m"
-    orange = "\x1b[33;20m"
-    red = "\x1b[31;20m"
-    bold_red = "\x1b[31;1m"
-    reset = "\x1b[0m"
-
-    FORMAT = "[%(name)s] | %(asctime)s: %(message)s" + reset
-
-    FORMATS = {
-        logging.INFO: cyan + "[INFO] | " + FORMAT,
-        logging.ERROR: red + "[ERROR] | " + FORMAT,
-        logging.DEBUG: green + "[DEBUG] | " + FORMAT,
-        logging.WARNING: yellow + "[WARNING] | " + FORMAT,
-        logging.CRITICAL: bold_red + "[CRITICAL] | " + FORMAT,
-    }
-
-    def format(self, record: logging.LogRecord) -> str:
-        """Format the log record using the custom formats."""
-        fmt = self.FORMATS.get(record.levelno)
-
-        formatter = logging.Formatter(fmt)
-
-        return formatter.format(record)
-
-    @classmethod
-    def build_logger(
-        cls: type["Formatter"], logger: logging.Logger | None = None
-    ) -> logging.Logger:
-        """Set the formatter for the logger."""
-        if __name__ == "__main__":
-            logger = logging.getLogger("wikipedia")
-
-        if not logger:
-            logger = logging.getLogger(__name__)
-
-        logger.setLevel(logging.DEBUG)
-        logger.propagate = False
-
-        if not logger.hasHandlers():
-            stream_handler = logging.StreamHandler()
-
-            logger.addHandler(stream_handler)
-
-        for handler in logger.handlers:
-            handler.setFormatter(cls())
-
-        return logger
-
-
-# Constants
 logger = Formatter.build_logger()
 client = httpx.Client()
 console = Console()
 
 
-class Response:
+class Response(BaseModel):
     """Semantic base class for API responses."""
 
     pass
 
 
-# Pydantic models to validate data
-class AccessTokenResponse(Response, BaseModel):
+class Params(BaseModel):
+    """Base class for API params."""
+
+    pass
+
+
+class Provider:
+    """Provider base class."""
+
+    client: httpx.Client = client
+
+
+class AccessTokenResponse(Response):
     """Access token response."""
 
     access_token: str
@@ -99,13 +55,6 @@ class AccessTokenResponse(Response, BaseModel):
         return int(time.time()) + self.expires_in
 
 
-# Provider class to collect methods
-class Provider:
-    """Provider base class."""
-
-    client: httpx.Client = client
-
-
 class ClientCredentials(typing.NamedTuple):
     """Client credentials."""
 
@@ -113,7 +62,7 @@ class ClientCredentials(typing.NamedTuple):
     client_secret: str
 
 
-class WikipediaSearchParams(BaseModel):
+class WikipediaSearchParams(Params):
     """Search endpoint params."""
 
     search_terms: list[str] = []
@@ -155,13 +104,12 @@ class Wikipedia(Provider):
     random_url: str = "https://en.wikipedia.org/wiki/Special:Random"
     token: str | None = None
 
-
     @property
     def debug(self) -> bool:
         """Check the environment for the debug flag."""
         return os.getenv("DEBUG", False) in [True, "True"]
 
-    def get_credentials(self) -> ClientCredentials:
+    def load_credentials(self) -> ClientCredentials:
         """Return the client credentials."""
         client_id = os.getenv("WM_CLIENT_ID")
         client_secret = os.getenv("WM_CLIENT_SECRET")
@@ -180,7 +128,7 @@ class Wikipedia(Provider):
                 self.auth_url,
                 data={
                     "grant_type": "client_credentials",
-                    **self.get_credentials()._asdict(),
+                    **self.load_credentials()._asdict(),
                 },
             )
 
@@ -200,8 +148,6 @@ class Wikipedia(Provider):
             logger.warning("No access token found.")
         else:
             headers = {"Authorization": f"Bearer {self.token}"}
-
-
 
         with httpx.Client(base_url=self.api_url) as client:
             logger.debug("Searching Wikipedia")
@@ -231,7 +177,6 @@ class Wikipedia(Provider):
             logger.warning("No access token found.")
         else:
             headers = {"Authorization": f"Bearer {self.token}"}
-
 
         with httpx.Client(base_url=self.api_url) as client:
             logger.debug(f"Searching Wikipedia for: {",".join(terms)}")

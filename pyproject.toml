@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "cli"
+name = "wikipy"
 version = "0.1.0"
 description = ""
 authors = ["Owais Jamil <desertthunder.dev@gmail.com>"]
@@ -14,6 +14,7 @@ pydantic = "^2.9.2"
 sqlmodel = "^0.0.22"
 python-dotenv = "^1.0.1"
 bs4 = "^0.0.2"
+graphviz = "^0.20.3"
 
 
 [tool.poetry.group.dev.dependencies]
